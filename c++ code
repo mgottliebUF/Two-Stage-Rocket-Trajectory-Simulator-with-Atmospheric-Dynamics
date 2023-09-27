@@ -1,0 +1,92 @@
+#include <iostream>
+#include <cmath>
+
+const double g_earth = 9.81;  
+const double R_earth = 6371e3;
+const double baseAirDensity = 1.225;  // kg/m^3 at sea level
+const double altitudeScaleHeight = 8500.0;  // meters
+const double dragCoefficient = 0.5;  // Assumed value for a rocket
+const double crossSectionalArea = 4.0;  // m^2, assumed value for a rocket
+
+double calculateGravity(double altitude) {
+    return g_earth * pow(R_earth / (R_earth + altitude), 2);
+}
+
+double calculateAirDensity(double altitude) {
+    return baseAirDensity * exp(-altitude / altitudeScaleHeight);
+}
+
+double calculateDrag(double velocity, double altitude) {
+    double airDensity = calculateAirDensity(altitude);
+    return 0.5 * airDensity * velocity * fabs(velocity) * dragCoefficient * crossSectionalArea;
+}
+
+int main() {
+    double thrust1, burnTime1, mass1, fuelMass1, fuelBurnRate1;
+    double thrust2, burnTime2, mass2, fuelMass2, fuelBurnRate2;
+    double launchAngleDegree;
+
+    std::cout << "---- First Stage ----" << std::endl;
+    std::cout << "Enter the thrust of the first stage (Newtons): ";
+    std::cin >> thrust1;
+    std::cout << "Enter the burn time of the first stage (seconds): ";
+    std::cin >> burnTime1;
+    std::cout << "Enter the total mass of the rocket with the first stage (kg): ";
+    std::cin >> mass1;
+    std::cout << "Enter the fuel mass of the first stage (kg): ";
+    std::cin >> fuelMass1;
+    std::cout << "Enter the fuel burn rate of the first stage (kg/s): ";
+    std::cin >> fuelBurnRate1;
+
+    std::cout << "---- Second Stage ----" << std::endl;
+    std::cout << "Enter the thrust of the second stage (Newtons): ";
+    std::cin >> thrust2;
+    std::cout << "Enter the burn time of the second stage (seconds): ";
+    std::cin >> burnTime2;
+    std::cout << "Enter the total mass of the rocket with the second stage (kg): ";
+    std::cin >> mass2;
+    std::cout << "Enter the fuel mass of the second stage (kg): ";
+    std::cin >> fuelMass2;
+    std::cout << "Enter the fuel burn rate of the second stage (kg/s): ";
+    std::cin >> fuelBurnRate2;
+
+    std::cout << "Enter the angle of launch (degrees from vertical): ";
+    std::cin >> launchAngleDegree;
+
+    double dt = 0.01; 
+    double verticalVelocity = 0;
+    double altitude = 0;
+    double horizontalVelocity = 0;
+    double distance = 0;
+    double launchAngle = launchAngleDegree * M_PI / 180.0;  // Convert degree to radians
+
+    for (double t = 0; t < burnTime1 && fuelMass1 > 0; t += dt) {
+        double currentThrust = thrust1;
+        double currentMass = mass1 - t * fuelBurnRate1;
+
+        double netForceVertical = currentThrust * sin(launchAngle) - currentMass * calculateGravity(altitude) - calculateDrag(verticalVelocity, altitude);
+        double accelerationVertical = netForceVertical / currentMass;
+
+        double netForceHorizontal = currentThrust * cos(launchAngle) - calculateDrag(horizontalVelocity, altitude);
+        double accelerationHorizontal = netForceHorizontal / currentMass;
+
+        verticalVelocity += accelerationVertical * dt;
+        altitude += verticalVelocity * dt;
+        horizontalVelocity += accelerationHorizontal * dt;
+        distance += horizontalVelocity * dt;
+
+        fuelMass1 -= fuelBurnRate1 * dt;  // Decrease the fuel
+    }
+
+    // Consider the jettisoned mass from the first stage
+    mass2 -= (mass1 - fuelMass1);
+
+    for (double t = 0; t < burnTime2 && fuelMass2 > 0; t += dt) {
+        double currentThrust = thrust2;
+        double currentMass = mass2 - t * fuelBurnRate2;
+
+        double netForceVertical = currentThrust * sin(launchAngle) - currentMass * calculateGravity(altitude) - calculateDrag(verticalVelocity, altitude);
+        double accelerationVertical = netForceVertical / currentMass;
+
+        double netForceHorizontal = currentThrust * cos(launchAngle) - calculateDrag(horizontalVelocity, altitude);
+        double accelerationHorizontal = netForceHorizontal / currentMass
